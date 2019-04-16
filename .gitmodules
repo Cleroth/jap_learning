@@ -1,0 +1,3 @@
+[submodule "stlx"]
+	path = stlx
+	url = git@github.com:Cleroth/stlx.git

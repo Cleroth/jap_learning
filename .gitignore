@@ -1,0 +1,6 @@
+/jap_learning/Debug
+/jap_learning/config.json
+/.vs
+/Debug/*.pdb
+/Debug/*.ilk
+/Debug/*.exe
