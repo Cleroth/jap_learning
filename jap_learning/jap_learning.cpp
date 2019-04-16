@@ -32,7 +32,7 @@ class App : public BaseApp {
 			{u8"雨季", u8"うき"   , "Rainy season"             },
 			{u8"大雨", u8"おおあめ" , "Heavy rain"               },
 			{u8"円周", u8"えんしゅう", "Circumference"            },
-			{u8"円高", u8"えんだか" , "Strenghtening of t he yen"},
+			{u8"円高", u8"えんだか" , "Strenghtening of the yen"},
 			{u8"火事", u8"かじ"   , "Fire (accident)"     },
 			{u8"消火", u8"しょうか",	"Extinguish fire"   },
 			{u8"花火", u8"はなび",		"Fireworks"         },
@@ -100,6 +100,9 @@ class App : public BaseApp {
 
 	void DoKanjiLesson(const KanjiLesson & lesson)
 	{
+		constexpr uint kGoalTotal = 4;
+		constexpr double kGoalPct = 0.85; // ~= 6/7
+
 		struct Answer {
 			uint idx;
 			uint correct = 0, incorrect = 0;
@@ -113,7 +116,7 @@ class App : public BaseApp {
 			}
 			bool operator<(const Answer & rhs) const
 			{
-				return Percent() * GetTotal() < rhs.Percent() * rhs.GetTotal();
+				return Percent() < rhs.Percent() || GetTotal() < rhs.GetTotal();
 			}
 		};
 		Vector<Answer> answers;
@@ -145,6 +148,19 @@ class App : public BaseApp {
 				{
 					a.correct++;
 					Con::Line(Con::Color::Green, "Correct. {} - {}", kotoba.kanji, kotoba.meaning);
+
+					bool goal_accomplished = true;
+					for(const auto & a : answers)
+					{
+						if(a.GetTotal() < kGoalTotal || a.Percent() < kGoalPct)
+							goal_accomplished = false;
+					}
+
+					if(goal_accomplished)
+					{
+						Con::Line(Con::Color::Green, "Goal accomplished!");
+						throw Exception("");
+					}
 				}
 				else
 				{
@@ -161,7 +177,8 @@ class App : public BaseApp {
 		Con::Line(Con::Color::Yellow, "Answers:");
 		for(const auto & a : answers)
 		{
-			Con::Line("  {:>3}/{:>3} ({:>3}%) - {}",
+			Con::SetColor(Con::Color::Dark_Green);
+			Con::Line("  {:>3}/{:>3} ({:>3}%):  {}",
 						 a.correct, a.GetTotal(), int(a.Percent() * 100 + 0.5),
 						 lesson[a.idx].kanji);
 		}
