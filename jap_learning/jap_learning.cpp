@@ -100,7 +100,7 @@ class App : public BaseApp {
 
 	void DoKanjiLesson(const KanjiLesson & lesson)
 	{
-		constexpr uint kGoalTotal = 4;
+		constexpr uint kGoalTotal = 3;
 		constexpr double kGoalPct = 0.85; // ~= 6/7
 
 		struct Answer {
@@ -114,12 +114,64 @@ class App : public BaseApp {
 					return 0;
 				return (double)correct / total;
 			}
+			double GetScore() const 
+			{
+				auto total = GetTotal();
+				if(total == 0)
+					return 0;
+
+				auto score = ((double)correct - incorrect);
+				score *= abs((double)correct / total - 0.5); // * 2;
+				return score;
+			}
 			bool operator<(const Answer & rhs) const
 			{
-				return Percent() < rhs.Percent() || GetTotal() < rhs.GetTotal();
+				return GetScore() < rhs.GetScore();
 			}
 		};
+
 		Vector<Answer> answers;
+		
+		auto getMin = [&]{
+			std::pair<double, double> p;
+			p.first = p.second = std::numeric_limits<double>::max();
+
+			for(const auto & a : answers)
+			{
+				if(a.GetTotal() < p.first)
+					p.first = a.GetTotal();
+				if(a.Percent() < p.second)
+					p.second = a.Percent();
+			}
+			return p;
+		};
+
+		auto getAvg = [&] {
+			std::pair p{0.,0.};
+
+			for(const auto & a : answers)
+			{
+				p.first += a.GetTotal();
+				p.second += a.Percent();
+			}
+
+			p.first /= (double)answers.Size();
+			p.second /= (double)answers.Size();
+			return p;
+		};
+
+		auto printScores = [&] {
+			auto min = getMin();
+			auto avg = getAvg();
+			system("cls");
+			Con::Line(Con::Color::Yellow, format("Min: {}% | {}    Avg: {}% | {}     Goal (Min): {}% | {}",
+															 min.second * 100, min.first,
+															 avg.second * 100, avg.first,
+															 kGoalPct   * 100, kGoalTotal
+			));
+			Con::Line();
+		};
+
 
 		try
 		{
@@ -127,6 +179,7 @@ class App : public BaseApp {
 				answers += Answer{i};
 
 			uint last = -1;
+			printScores();
 
 			while(1)
 			{
@@ -135,7 +188,7 @@ class App : public BaseApp {
 
 				auto & a = answers[answers[0].idx != last ? 0 : 1];
 				const auto & kotoba = lesson[a.idx];
-
+				
 				Con::Line(Con::Color::Dark_White, u8"Reading of {}", kotoba.kanji);
 
 				String in;
@@ -147,16 +200,11 @@ class App : public BaseApp {
 				if(in == kotoba.hiragana)
 				{
 					a.correct++;
+					printScores();
 					Con::Line(Con::Color::Green, "Correct. {} - {}", kotoba.kanji, kotoba.meaning);
 
-					bool goal_accomplished = true;
-					for(const auto & a : answers)
-					{
-						if(a.GetTotal() < kGoalTotal || a.Percent() < kGoalPct)
-							goal_accomplished = false;
-					}
-
-					if(goal_accomplished)
+					auto min = getMin();
+					if(min.first >= kGoalTotal && min.second >= kGoalPct)
 					{
 						Con::Line(Con::Color::Green, "Goal accomplished!");
 						throw Exception("");
@@ -165,7 +213,8 @@ class App : public BaseApp {
 				else
 				{
 					a.incorrect++;
-					Con::Line(Con::Color::Red, "Incorrect. Reading was: {}", kotoba.hiragana);
+					printScores();
+					Con::Line(Con::Color::Red, "Incorrect. Reading was: {} - {}", kotoba.hiragana, kotoba.meaning);
 				}
 
 				last = a.idx;
