@@ -23,21 +23,22 @@ class App : public BaseApp {
 			{u8"安全", u8"あんぜん" , "safety"                   },
 			{u8"安物", u8"やすもの" , "cheap/poor article"       },
 			{u8"一家", u8"いっか"  , "one family"               },
-			{u8"一晩", u8"ひとばん" , "One night"                },
-			{u8"飲食", u8"いんしょく", "Eating and drinking"      },
-			{u8"右折", u8"うせつ"  , "Turn right/right turn"    },
-			{u8"左右", u8"さゆう"  , "Left and right"           },
-			{u8"右手", u8"みぎて"  , "Right hand"               },
-			{u8"左手", u8"ひだりて" , "Left hand"                },
-			{u8"雨季", u8"うき"   , "Rainy season"             },
-			{u8"大雨", u8"おおあめ" , "Heavy rain"               },
-			{u8"円周", u8"えんしゅう", "Circumference"            },
-			{u8"円高", u8"えんだか" , "Strenghtening of the yen"},
-			{u8"火事", u8"かじ"   , "Fire (accident)"     },
-			{u8"消火", u8"しょうか",	"Extinguish fire"   },
-			{u8"花火", u8"はなび",		"Fireworks"         },
-			{u8"以下", u8"いか"	,		"... and below"     },
-			{u8"以上", u8"いじょう",	"... and above"     },
+			//{u8"一晩", u8"ひとばん" , "One night"                },
+			//{u8"飲食", u8"いんしょく", "Eating and drinking"      },
+			//{u8"右折", u8"うせつ"  , "Turn right/right turn"    },
+			//{u8"左折", u8"させつ"  , "Turn left/left turn"    },
+			//{u8"左右", u8"さゆう"  , "Left and right"           },
+			//{u8"右手", u8"みぎて"  , "Right hand"               },
+			//{u8"左手", u8"ひだりて" , "Left hand"                },
+			//{u8"雨季", u8"うき"   , "Rainy season"             },
+			//{u8"大雨", u8"おおあめ" , "Heavy rain"               },
+			//{u8"円周", u8"えんしゅう", "Circumference"            },
+			//{u8"円高", u8"えんだか" , "Strenghtening of the yen"},
+			//{u8"火事", u8"かじ"   , "Fire (accident)"     },
+			//{u8"消火", u8"しょうか",	"Extinguish fire"   },
+			//{u8"花火", u8"はなび",		"Fireworks"         },
+			//{u8"以下", u8"いか"	,		"... and below"     },
+			//{u8"以上", u8"いじょう",	"... and above"     },
 
 		};
 	}
@@ -121,7 +122,7 @@ class App : public BaseApp {
 					return 0;
 
 				auto score = ((double)correct - incorrect);
-				score *= abs((double)correct / total - 0.5); // * 2;
+				score *= abs((double)correct / total - 0.5) * 2;
 				return score;
 			}
 			bool operator<(const Answer & rhs) const
@@ -131,43 +132,52 @@ class App : public BaseApp {
 		};
 
 		Vector<Answer> answers;
-		
+		struct ScoreCount {
+			ScoreCount() {}
+			ScoreCount(bool inf) : total(std::numeric_limits<double>::max()),
+				pct(total), score(total) {}
+			double total = 0, pct = 0, score = 0;
+		};
+
 		auto getMin = [&]{
-			std::pair<double, double> p;
-			p.first = p.second = std::numeric_limits<double>::max();
+			ScoreCount ret(true);
 
 			for(const auto & a : answers)
 			{
-				if(a.GetTotal() < p.first)
-					p.first = a.GetTotal();
-				if(a.Percent() < p.second)
-					p.second = a.Percent();
+				if(a.GetTotal() < ret.total)
+					ret.total = a.GetTotal();
+				if(a.Percent() < ret.pct)
+					ret.pct = a.Percent();
+				if(a.GetScore() < ret.score)
+					ret.score = a.GetScore();
 			}
-			return p;
+			return ret;
 		};
 
 		auto getAvg = [&] {
-			std::pair p{0.,0.};
+			ScoreCount ret;
 
 			for(const auto & a : answers)
 			{
-				p.first += a.GetTotal();
-				p.second += a.Percent();
+				ret.total += a.GetTotal();
+				ret.pct += a.Percent();
+				ret.score += a.GetScore();
 			}
 
-			p.first /= (double)answers.Size();
-			p.second /= (double)answers.Size();
-			return p;
+			ret.total /= (double)answers.Size();
+			ret.pct /= (double)answers.Size();
+			ret.score /= (double)answers.Size();
+			return ret;
 		};
 
 		auto printScores = [&] {
 			auto min = getMin();
 			auto avg = getAvg();
 			system("cls");
-			Con::Line(Con::Color::Yellow, format("Min: {}% | {}    Avg: {}% | {}     Goal (Min): {}% | {}",
-															 min.second * 100, min.first,
-															 avg.second * 100, avg.first,
-															 kGoalPct   * 100, kGoalTotal
+			Con::Line(Con::Color::Yellow, format("Min: {}% | {} | {}    Avg: {}% | {} | {}     Goal (Min): {}% | {} | {}",
+															 min.pct * 100, min.total, min.score,
+															 avg.pct * 100, avg.total, avg.score,
+															 kGoalPct   * 100, kGoalTotal, 0
 			));
 			Con::Line();
 		};
@@ -204,7 +214,7 @@ class App : public BaseApp {
 					Con::Line(Con::Color::Green, "Correct. {} - {}", kotoba.kanji, kotoba.meaning);
 
 					auto min = getMin();
-					if(min.first >= kGoalTotal && min.second >= kGoalPct)
+					if(min.total >= kGoalTotal && min.pct >= kGoalPct)
 					{
 						Con::Line(Con::Color::Green, "Goal accomplished!");
 						throw Exception("");
@@ -227,10 +237,11 @@ class App : public BaseApp {
 		for(const auto & a : answers)
 		{
 			Con::SetColor(Con::Color::Dark_Green);
-			Con::Line("  {:>3}/{:>3} ({:>3}%):  {}",
-						 a.correct, a.GetTotal(), int(a.Percent() * 100 + 0.5),
+			Con::Line("  {:>2}/{:>2} ({:>3}%,{:>4.1}):  {}",
+						 a.correct, a.GetTotal(), int(a.Percent() * 100 + 0.5), a.GetScore(),
 						 lesson[a.idx].kanji);
 		}
+		system("pause");
 	}
 
 	void SelectProfile()
